@@ -24,28 +24,20 @@ const Body = () => {
   const fetchRestaurants = async () => {
     try {
       setIsLoading(true);
-      
-      // Using CORS proxy to avoid CORS issues
-      const CORS_PROXY = "https://corsproxy.io/?";
-      const API_URL = "https://www.swiggy.com/dapi/restaurants/list/v5?lat=28.5355161&lng=77.3910265&is-seo-homepage-enabled=true&page_type=DESKTOP_WEB_LISTING";
-      
-      const res = await fetch(CORS_PROXY + encodeURIComponent(API_URL));
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/restaurants`,
+      );
       const json = await res.json();
 
-      // Extract restaurants from Swiggy API response
       const restaurants =
-        json?.data?.cards?.find(
-          (card) =>
-            card?.card?.card?.gridElements?.infoWithStyle?.restaurants
-        )?.card?.card?.gridElements?.infoWithStyle?.restaurants || [];
+        json?.data?.cards?.[1]?.card?.card?.gridElements?.infoWithStyle
+          ?.restaurants || [];
 
       setListOfRestaurants(restaurants);
       setFilteredRestaurants(restaurants);
     } catch (error) {
       console.error("Error fetching restaurants:", error);
-      // Fallback to mock data if API fails
-      setListOfRestaurants([]);
-      setFilteredRestaurants([]);
     } finally {
       setIsLoading(false);
     }
@@ -53,14 +45,14 @@ const Body = () => {
 
   const handleSearch = () => {
     const filtered = listOfRestaurants.filter((res) =>
-      res.info.name.toLowerCase().includes(searchText.toLowerCase())
+      res.info.name.toLowerCase().includes(searchText.toLowerCase()),
     );
     setFilteredRestaurants(filtered);
   };
 
   const handleTopRated = () => {
     const filtered = listOfRestaurants.filter(
-      (res) => res.info.avgRating >= 4.3
+      (res) => res.info.avgRating >= 4.3,
     );
     setFilteredRestaurants(filtered);
   };
