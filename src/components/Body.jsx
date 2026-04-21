@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useCallback, useMemo } from "react";
 import RestaurantCard, { withPromotedLabel } from "./RestaurantCard.jsx";
 import Shimmer from "./Shimmer.jsx";
 import { Link } from "react-router-dom";
@@ -7,14 +7,16 @@ import { FaSearch, FaStar, FaUndo } from "react-icons/fa";
 import { MdWifiOff } from "react-icons/md";
 import UserContext from "../utils/UserContext.jsx";
 
+// Create HOC outside component so it's not re-created on every render
+const RestaurantCardWithPromoted = withPromotedLabel(RestaurantCard);
+
 const Body = () => {
   const [listOfRestaurants, setListOfRestaurants] = useState([]);
-  const [filteredRestaurants, setFilteredRestaurants] = useState([]);
   const [searchText, setSearchText] = useState("");
+  const [filterMode, setFilterMode] = useState("all"); // 'all' | 'topRated' | 'search'
   const [isLoading, setIsLoading] = useState(true);
 
   const { loggedInUser, setUserName } = useContext(UserContext);
-  const RestaurantCardWithPromoted = withPromotedLabel(RestaurantCard);
   const onlineStatus = useOnlineStatus();
 
   useEffect(() => {
@@ -24,18 +26,12 @@ const Body = () => {
   const fetchRestaurants = async () => {
     try {
       setIsLoading(true);
-
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/restaurants`,
-      );
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/restaurants`);
       const json = await res.json();
-
       const restaurants =
         json?.data?.cards?.[1]?.card?.card?.gridElements?.infoWithStyle
           ?.restaurants || [];
-
       setListOfRestaurants(restaurants);
-      setFilteredRestaurants(restaurants);
     } catch (error) {
       console.error("Error fetching restaurants:", error);
     } finally {
@@ -43,32 +39,31 @@ const Body = () => {
     }
   };
 
-  const handleSearch = () => {
-    const filtered = listOfRestaurants.filter((res) =>
-      res.info.name.toLowerCase().includes(searchText.toLowerCase()),
-    );
-    setFilteredRestaurants(filtered);
-  };
-
-  const handleTopRated = () => {
-    const filtered = listOfRestaurants.filter(
-      (res) => res.info.avgRating >= 4.3,
-    );
-    setFilteredRestaurants(filtered);
-  };
-
-  const handleReset = () => {
-    setFilteredRestaurants(listOfRestaurants);
-    setSearchText("");
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSearch();
+  // Derive filtered list with useMemo — no separate filteredRestaurants state
+  const filteredRestaurants = useMemo(() => {
+    if (filterMode === "topRated") {
+      return listOfRestaurants.filter((r) => r.info.avgRating >= 4.3);
     }
-  };
+    if (filterMode === "search" && searchText.trim()) {
+      return listOfRestaurants.filter((r) =>
+        r.info.name.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
+    return listOfRestaurants;
+  }, [listOfRestaurants, filterMode, searchText]);
 
-  // Offline UI
+  // Stable callbacks with useCallback
+  const handleSearch = useCallback(() => setFilterMode("search"), []);
+  const handleTopRated = useCallback(() => setFilterMode("topRated"), []);
+  const handleReset = useCallback(() => {
+    setFilterMode("all");
+    setSearchText("");
+  }, []);
+  const handleKeyPress = useCallback(
+    (e) => { if (e.key === "Enter") handleSearch(); },
+    [handleSearch]
+  );
+
   if (!onlineStatus) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center text-center">
@@ -81,7 +76,6 @@ const Body = () => {
     );
   }
 
-  // Loading
   if (isLoading) return <Shimmer />;
 
   return (
@@ -97,7 +91,11 @@ const Body = () => {
                   placeholder="Search for restaurants..."
                   className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200 transition"
                   value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    // Reset to all if field is cleared
+                    if (!e.target.value) setFilterMode("all");
+                  }}
                   onKeyPress={handleKeyPress}
                 />
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -126,7 +124,6 @@ const Body = () => {
             </button>
           </div>
 
-          {/* USERNAME SECTION */}
           <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
             <label className="text-sm font-medium text-gray-600">
               Display Name:
@@ -172,9 +169,7 @@ const Body = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
               No restaurants found
             </h2>
-            <p className="text-gray-600">
-              Try adjusting your search or filters
-            </p>
+            <p className="text-gray-600">Try adjusting your search or filters</p>
             <button
               onClick={handleReset}
               className="mt-4 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
