@@ -1,35 +1,40 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import Header from "./components/Header.jsx";
-import Body from "./components/Body.jsx";
-import Contacts from "./components/Contacts.jsx";
-import Cart from "./components/Cart.jsx";
-import Error from "./components/Error.jsx";
-import Login from "./components/Login.jsx";
-import Signup from "./components/Signup.jsx";
-import RestaurantMenu from "./components/RestaurantMenu.jsx";
 import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
-import "./index.css";
-import Footer from "./components/Footer.jsx";
 import { Provider } from "react-redux";
+import Header from "./components/Header.jsx";
+import Error from "./components/Error.jsx";
+import "./index.css";
 import appStore from "./utils/appStore.js";
 import { AuthProvider } from "./utils/AuthContext.jsx";
 import UserContext from "./utils/UserContext.jsx";
+import Shimmer from "./components/Shimmer.jsx";
 
-// Code Splitting - Lazy loading components
-const Grocery = lazy(() => import("./components/Grocery.jsx"));
-const About = lazy(() => import("./components/About.jsx"));
+// ─── Lazy load ALL route-level components ───────────────────────────────────
+// Only Header, Error & Shimmer are eager (needed on first paint).
+// Everything else loads only when the user navigates to that route.
+const Body            = lazy(() => import("./components/Body.jsx"));
+const Contacts        = lazy(() => import("./components/Contacts.jsx"));
+const Cart            = lazy(() => import("./components/Cart.jsx"));
+const Login           = lazy(() => import("./components/Login.jsx"));
+const Signup          = lazy(() => import("./components/Signup.jsx"));
+const RestaurantMenu  = lazy(() => import("./components/RestaurantMenu.jsx"));
+const Footer          = lazy(() => import("./components/Footer.jsx"));
+const Grocery         = lazy(() => import("./components/Grocery.jsx"));
+const About           = lazy(() => import("./components/About.jsx"));
 
-// AppLayout component with Outlet for children routes
+// Reusable page-level loading fallback (uses existing Shimmer)
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="text-xl text-gray-500 animate-pulse">Loading…</div>
+  </div>
+);
+
 const AppLayout = () => {
   const [userName, setUserName] = useState("");
 
   useEffect(() => {
-    // Simulating API call to get user data
-    const data = {
-      name: "Guest User",
-    };
-    setUserName(data.name);
+    setUserName("Guest User");
   }, []);
 
   return (
@@ -39,9 +44,15 @@ const AppLayout = () => {
           <div className="app min-h-screen flex flex-col">
             <Header />
             <main className="flex-grow">
-              <Outlet />
+              {/* Single Suspense boundary wraps all lazy routes */}
+              <Suspense fallback={<PageLoader />}>
+                <Outlet />
+              </Suspense>
             </main>
-            <Footer />
+            {/* Footer is lazy too — not needed for first paint */}
+            <Suspense fallback={null}>
+              <Footer />
+            </Suspense>
           </div>
         </UserContext.Provider>
       </AuthProvider>
@@ -53,60 +64,20 @@ const appRouter = createBrowserRouter([
   {
     path: "/",
     element: <AppLayout />,
-    children: [
-      {
-        path: "/",
-        element: <Body />,
-      },
-      {
-        path: "/about",
-        element: (
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-xl text-gray-600">Loading...</div>
-            </div>
-          }>
-            <About />
-          </Suspense>
-        ),
-      },
-      {
-        path: "/contact",
-        element: <Contacts />,
-      },
-      {
-        path: "/grocery",
-        element: (
-          <Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-xl text-gray-600">Loading...</div>
-            </div>
-          }>
-            <Grocery />
-          </Suspense>
-        ),
-      },
-      {
-        path: "/cart",
-        element: <Cart />,
-      },
-      {
-        path: "/restaurants/:resId",
-        element: <RestaurantMenu />,
-      },
-      {
-        path: "/login",
-        element: <Login />,
-      },
-      {
-        path: "/signup",
-        element: <Signup />,
-      },
-    ],
     errorElement: <Error />,
+    children: [
+      { path: "/",                   element: <Body /> },
+      { path: "/about",              element: <About /> },
+      { path: "/contact",            element: <Contacts /> },
+      { path: "/grocery",            element: <Grocery /> },
+      { path: "/cart",               element: <Cart /> },
+      { path: "/restaurants/:resId", element: <RestaurantMenu /> },
+      { path: "/login",              element: <Login /> },
+      { path: "/signup",             element: <Signup /> },
+    ],
   },
 ]);
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-
-root.render(<RouterProvider router={appRouter} />);
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <RouterProvider router={appRouter} />
+);
