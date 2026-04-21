@@ -1,15 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food Villa 🚀</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Food Villa 🚀</title>
+
+  <!-- DNS prefetch for external domains used at runtime -->
+  <link rel="dns-prefetch" href="https://media-assets.swiggy.com" />
+  <link rel="dns-prefetch" href="https://corsproxy.io" />
+
+  <!-- Preconnect to CDN for restaurant images -->
+  <link rel="preconnect" href="https://media-assets.swiggy.com" crossorigin />
+
+  <!-- Preload the logo so it doesn't block LCP -->
+  <link
+    rel="preload"
+    as="image"
+    href="https://t3.ftcdn.net/jpg/08/29/90/88/360_F_829908823_kYsRKdQcIaYEAhHRAZTIXuSKvuVPif8w.jpg"
+  />
+
+  <!-- Theme color for mobile browsers -->
+  <meta name="theme-color" content="#f97316" />
 </head>
 <body>
-
-<div id="root"></div>
-
-<script type="module" src="/src/main.jsx"></script>
-
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
